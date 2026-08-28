@@ -28,9 +28,16 @@ Ryzen AI Max+ 395 · Radeon 8060S (gfx1151) · 128 GiB unified memory (112 GiB G
 | decode t/s | 13.28 | 21.01 | **27.18** | 19.80 | 15.25 | 15.09 |
 | speedup | 1.00× | 1.60× | **2.07×** | 1.51× | 1.16× | 1.15× |
 
-Single-peaked at **n=5**. Acceptance stays healthy well past the peak
-(n=10 still accepts 0.864 at position 1), so the drop at high `n_max` is
-**rollback and draft-compute overhead, not acceptance collapse**.
+Single-peaked at **n=5**, and not by coincidence: the verify batch is `n_max + 1`, and
+`llama.cpp`'s Vulkan backend switches off its fast `MUL_MAT_VEC` path above
+`mul_mat_vec_max_cols = 8`. Crossing that line the target pass jumps from 217 ms to
+328 ms. Acceptance is still healthy out at n=10 (0.864 at the first draft position),
+so this is **not** the draft head running out of accuracy.
+
+**Decode here is not bandwidth-bound** — 13.3 tok/s against a ~48 tok/s bandwidth
+ceiling — which is exactly why speculation is worth 2×. The full arithmetic, including
+where every millisecond of a decode step goes, is in
+**[docs/WHY-IT-IS-FAST.md](docs/WHY-IT-IS-FAST.md)**.
 
 ---
 
