@@ -32,9 +32,13 @@ Ryzen AI Max+ 395 · Radeon 8060S(gfx1151)· 128 GiB 统一内存(GTT 上限 112
 跨过这条线时目标模型耗时从 217 ms 跳到 328 ms。而 n=10 时首位接受率仍有 0.864,
 **不是草稿头失准**。
 
-**这里的 decode 并不受带宽限制** —— 13.3 tok/s,而带宽上限约 48 tok/s ——
-这正是投机解码能值 2 倍的原因。完整推导(包括一个 decode 步的每毫秒去了哪里)见
-**[docs/WHY-IT-IS-FAST.md](docs/WHY-IT-IS-FAST.md)**(英文)。
+一个 decode 步的每毫秒究竟去了哪里,用 `GGML_VK_PERF_LOGGER` 逐算子实测的结果见
+**[docs/WHERE-THE-TIME-GOES.md](docs/WHERE-THE-TIME-GOES.md)**(英文):
+GPU 有 **97.6%** 的墙钟时间在忙,前十名里九个已经跑在内存带宽上限,
+只有 **5.3%** 的时间落在两个低效内核上。
+
+[`docs/WHY-IT-IS-FAST.md`](docs/WHY-IT-IS-FAST.md) 是更早的分析,保留是因为推理过程
+有参考价值 —— 但它的两条核心机制都被上面那份实测推翻了。**先读实测那份。**
 
 ---
 

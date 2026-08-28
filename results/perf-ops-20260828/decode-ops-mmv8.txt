@@ -1,0 +1,64 @@
+Vulkan Timings:
+ABS: 25 x 2.309 us = 57.74 us
+ADD: 5775 x 2.424 us = 13999.1 us
+CLAMP: 25 x 2.349 us = 58.74 us
+CONCAT: 925 x 1.805 us = 1670.52 us
+CONT: 6575 x 2.302 us = 15136.2 us
+CPY: 2125 x 5.682 us = 12075.5 us
+FILL: 600 x 2.342 us = 1405.65 us
+FLASH_ATTN_EXT dst(256,24,1,1),  q(256,1,24,1),  k(256,256,2,1),  v(256,256,2,1),  m(256,1,1,1): 300 x 16.528 us = 4958.53 us (380.644 GFLOPS/s)
+GATED_DELTA_NET: 900 x 13.86 us = 12474.3 us
+GET_ROWS: 2500 x 8.345 us = 20864.5 us
+GLU: 2400 x 2.591 us = 6220.36 us
+L2_NORM: 1800 x 2.222 us = 4000.2 us
+MUL: 10800 x 2.465 us = 26627.6 us
+MULTI_ADD ADD: 3950 x 2.552 us = 10082.4 us
+MUL_MAT_ID_MUL MUL_MAT_ID_VEC q5_1 m=2560 n=10 k=640 n_expert=512: 1075 x 71.066 us = 76397 us (460.726 GFLOPS/s)
+MUL_MAT_ID_MUL MUL_MAT_ID_VEC q8_0 m=2560 n=10 k=640 n_expert=512: 125 x 87.218 us = 10902.4 us (375.405 GFLOPS/s)
+MUL_MAT_ID_VEC q4_K m=640 n=10 k=2560 n_expert=512: 2350 x 59.935 us = 140848 us (546.616 GFLOPS/s)
+MUL_MAT_ID_VEC q5_K m=640 n=10 k=2560 n_expert=512: 50 x 74.853 us = 3742.69 us (437.675 GFLOPS/s)
+MUL_MAT_VEC bf16 m=128 n=1 k=2560: 300 x 5.518 us = 1655.49 us (118.738 GFLOPS/s)
+MUL_MAT_VEC bf16 m=512 n=1 k=2560: 300 x 14.022 us = 4206.85 us (186.904 GFLOPS/s)
+MUL_MAT_VEC f32 m=1 n=1 k=2560: 1200 x 3.705 us = 4446.42 us (1.38152 GFLOPS/s)
+MUL_MAT_VEC f32 m=4 n=1 k=10240: 2400 x 8.883 us = 21319.3 us (9.2216 GFLOPS/s)
+MUL_MAT_VEC f32 m=48 n=1 k=2560: 1800 x 4.489 us = 8081.18 us (54.7298 GFLOPS/s)
+MUL_MAT_VEC f32 m=512 n=1 k=2560: 1200 x 29.303 us = 35164 us (89.4413 GFLOPS/s)
+MUL_MAT_VEC f32 m=64 n=4 k=128: 300 x 2.599 us = 779.751 us (25.1157 GFLOPS/s)
+MUL_MAT_VEC q8_0 m=10240 n=1 k=2560: 925 x 130.615 us = 120819 us (401.319 GFLOPS/s)
+MUL_MAT_VEC q8_0 m=10240 n=1 k=320: 2425 x 17.505 us = 42451.9 us (373.78 GFLOPS/s)
+MUL_MAT_VEC q8_0 m=12288 n=1 k=2560: 300 x 153.323 us = 45997.1 us (410.258 GFLOPS/s)
+MUL_MAT_VEC q8_0 m=248320 n=1 k=2560: 25 x 2946.63 us = 73665.8 us (431.391 GFLOPS/s)
+MUL_MAT_VEC q8_0 m=2560 n=1 k=2560: 25 x 36.776 us = 919.415 us (356.331 GFLOPS/s)
+MUL_MAT_VEC q8_0 m=2560 n=1 k=6144: 1200 x 81.062 us = 97275.4 us (388.029 GFLOPS/s)
+MUL_MAT_VEC q8_0 m=2560 n=1 k=640: 1200 x 9.873 us = 11848.6 us (331.607 GFLOPS/s)
+MUL_MAT_VEC q8_0 m=320 n=1 k=10240: 2425 x 20.008 us = 48521.2 us (327.521 GFLOPS/s)
+MUL_MAT_VEC q8_0 m=512 n=1 k=2560: 600 x 7.303 us = 4381.88 us (358.878 GFLOPS/s)
+MUL_MAT_VEC q8_0 m=6144 n=1 k=2560: 900 x 75.463 us = 67917.1 us (416.773 GFLOPS/s)
+MUL_MAT_VEC q8_0 m=640 n=1 k=2560: 2400 x 9.803 us = 23527.8 us (334.192 GFLOPS/s)
+RELU: 300 x 2.361 us = 708.327 us
+REPEAT: 2450 x 2.47 us = 6052.81 us
+RMS_NORM(2560,4,1,1): 2500 x 3.313 us = 8284.33 us
+RMS_NORM_MUL RMS_NORM(128,1,64,1): 300 x 2.49 us = 747.167 us
+RMS_NORM_MUL RMS_NORM(128,4,1,1): 300 x 2.785 us = 835.749 us
+RMS_NORM_MUL RMS_NORM(128,48,1,1): 900 x 5.021 us = 4519.65 us
+RMS_NORM_MUL RMS_NORM(256,2,1,1): 300 x 2.501 us = 750.441 us
+RMS_NORM_MUL RMS_NORM(256,24,1,1): 300 x 5.522 us = 1656.71 us
+ROPE: 1200 x 2.438 us = 2926.33 us
+SCALE: 9975 x 2.34 us = 23342.1 us
+SET_ROWS: 1200 x 2.602 us = 3123.39 us
+SGN: 25 x 2.319 us = 57.98 us
+SIGMOID: 8150 x 2.269 us = 18496.6 us
+SILU: 2450 x 2.359 us = 5780.08 us
+SOFTPLUS: 900 x 2.341 us = 2107.6 us
+SQRT: 25 x 2.314 us = 57.86 us
+SSM_CONV_SILU SSM_CONV: 900 x 3.707 us = 3336.33 us
+SUM_ROWS: 325 x 2.886 us = 938.234 us
+TOPK_MOE_EARLY_SOFTMAX_NORM SOFT_MAX: 1200 x 5.014 us = 6017.39 us
+TOP_K K=256 (256,1,1,1): 300 x 2.374 us = 712.364 us
+Total time: 1.06495e+06 us.
+1.42.406.144 I slot print_timing: id  0 | task 0 | prompt eval time =     371.79 ms /    13 tokens (   28.60 ms per token,    34.97 tokens per second)
+1.42.406.148 I slot print_timing: id  0 | task 0 |        eval time =    8688.52 ms /   200 tokens (   43.66 ms per token,    22.90 tokens per second)
+1.42.406.148 I slot print_timing: id  0 | task 0 |       total time =    9060.32 ms /   213 tokens
+1.42.406.155 I slot print_timing: id  0 | task 0 |    graphs reused =        199
+1.42.406.191 I slot      release: id  0 | task 0 | stop processing: n_tokens = 212, truncated = 0
+1.42.406.199 I srv  update_slots: all slots are idle

@@ -34,10 +34,14 @@ Single-peaked at **n=5**, and not by coincidence: the verify batch is `n_max + 1
 328 ms. Acceptance is still healthy out at n=10 (0.864 at the first draft position),
 so this is **not** the draft head running out of accuracy.
 
-**Decode here is not bandwidth-bound** — 13.3 tok/s against a ~48 tok/s bandwidth
-ceiling — which is exactly why speculation is worth 2×. The full arithmetic, including
-where every millisecond of a decode step goes, is in
-**[docs/WHY-IT-IS-FAST.md](docs/WHY-IT-IS-FAST.md)**.
+Where every millisecond of a decode step actually goes, measured per operation with
+`GGML_VK_PERF_LOGGER`, is in **[docs/WHERE-THE-TIME-GOES.md](docs/WHERE-THE-TIME-GOES.md)**:
+the GPU is busy **97.6%** of wall time, nine of the top ten operations already run at the
+memory-bandwidth ceiling, and only **5.3%** of decode sits in two inefficient kernels.
+
+[`docs/WHY-IT-IS-FAST.md`](docs/WHY-IT-IS-FAST.md) is the earlier analysis, kept because
+its reasoning is instructive — but its two central mechanisms were both falsified by that
+profile. Read the measured one first.
 
 ---
 

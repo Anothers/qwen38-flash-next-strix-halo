@@ -1,5 +1,23 @@
 # Why it runs this fast — and what actually limits it
 
+> ## ⚠️ Superseded in part — read [`WHERE-THE-TIME-GOES.md`](WHERE-THE-TIME-GOES.md) first
+>
+> Sections 2 and 3 below reason from architecture and source constants. They were later
+> checked against a per-operation profile (`GGML_VK_PERF_LOGGER`) and **did not survive**:
+>
+> - "a decode step is mostly fixed cost" / "72% is launch and synchronisation" — **wrong**.
+>   The GPU is busy **97.6%** of wall time. The bandwidth model this was inferred from
+>   underestimated per-token traffic badly.
+> - "the n=5 peak is set by `mul_mat_vec_max_cols = 8`" — **wrong**. Rebuilt with 16;
+>   decode operation costs are unchanged and the peak stays at n=5. In decode `n=1`, so
+>   the threshold never binds. It only affects speculative verify batches above 8, which
+>   a tuned configuration never reaches.
+> - §5's 256K figure was separately corrected (see the note in that section).
+>
+> What survives: the 2.07× speculation gain, the per-position acceptance data, and the
+> hardware comparison in §6. The mechanism explanations in §2–3 do not. They are kept
+> here unedited so the reasoning — and where it failed — stays visible.
+
 A 176B-parameter model decoding at 27.2 tok/s on an integrated GPU is not obvious.
 This is the arithmetic behind it, measured rather than assumed.
 
