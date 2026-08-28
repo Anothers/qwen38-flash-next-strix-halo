@@ -126,24 +126,32 @@ This is worth stating plainly because the intuitive reading of "n=8 is slower" i
 
 ---
 
-## 5. Why 256K context halves decode
+## 5. What 256K context actually costs
 
-| `-c` | ready GTT | Vulkan0 compute buffer | prefill | decode |
-|---:|---:|---:|---:|---:|
-| 131072 | 87.1 GiB | 2322 MiB | 208.1 | **27.18** |
-| 262144 | 93.0 GiB | 4386 MiB | 206.5 | **13.74** |
+| `-c` | ready GTT | Vulkan0 compute buffer | prefill | decode @52K | decode, short prompt |
+|---:|---:|---:|---:|---:|---:|
+| 131072 | 87.1 GiB | 2322 MiB | 208.1 | **27.18** | 27.55 |
+| 262144 | 93.0 GiB | 4386 MiB | 206.8 | **20.23** | 26.87 |
 
 Same seed, same prompt. Acceptance is **bit-identical** across the two runs — 0.69663,
-310/445 accepted, mean length 4.48, same per-position vector. Draft generation costs
-12% more (2112 → 2373 ms), nowhere near enough to explain a 2× loss.
+310/445 accepted, mean length 4.48, same per-position vector — so the loss is not on
+the speculation side. Prefill is unaffected (206.8 vs 208.1), and short prompts are
+essentially unaffected (26.87 vs 27.55). The cost appears only once there is
+substantial context, and the compute buffer doubling from 2322 to 4386 MiB is the
+visible symptom.
 
-So the cost is in the target model at large `n_ctx`, and the compute buffer doubling
-from 2322 to 4386 MiB is the visible symptom. Note that the *actual* KV occupancy is
-the same in both runs — only the allocated window differs. Prefill is unaffected
-(208.1 vs 206.5), which is consistent with a per-decode-step cost rather than an
-attention-length cost.
+Practical consequence: allocating 256K costs roughly a quarter of long-context decode
+and nothing at short context. Whether that trade is worth it depends on how often you
+actually fill the window.
 
-Practical consequence: do not allocate context you will not use.
+> **This section was wrong in the first version of this document.** It reported 13.74
+> t/s for `-c 262144` and concluded decode was halved. A later run of the identical
+> configuration measured 20.23 — a 47% spread on the same settings, same prompt, same
+> seed. The 13.74 run followed several back-to-back server restarts; the 20.23 run was
+> a clean start. Decode on this model is **not reproducible from a single run**. Every
+> other figure in this repository is also a single run, so treat any difference under
+> ~10% here as unresolved; the effects this document builds its argument on are
+> 1.5–2.5× and survive that uncertainty, but this one did not.
 
 ---
 
@@ -190,5 +198,9 @@ With the MTP head this machine passes the DGX Spark result by 1.7× despite havi
   400-token budget to within one token in all six runs.
 - The 190 GB/s effective / 215 GB/s peak figures are from earlier bandwidth work on
   this same machine, not from this model's runs.
-- Single machine, single run per configuration. Differences under ~2% should not be
-  read as real; the effects discussed here are 1.5–2.5×.
+- Single machine, single run per configuration. **This is a real weakness**: repeating
+  one configuration (`-c 262144`) produced 13.74 and 20.23 tok/s on separate runs, a 47%
+  spread, which invalidated an earlier version of §5. Differences under ~10% in this
+  document should be treated as unresolved. The effects the argument rests on — the
+  2.07× speculation gain and the batch-8 threshold — are 1.5–2.5× and survive that
+  uncertainty, but nothing smaller here should be relied on.

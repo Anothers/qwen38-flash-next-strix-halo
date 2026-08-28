@@ -142,17 +142,24 @@ tensors >4 GiB, see `llama-model-loader.cpp`) versus `none` (read fully into RAM
 > On a unified-memory machine the premise behind "offload to CPU to save VRAM" does not
 > hold anyway: GTT and host RAM are the same physical DRAM.
 
-### 4. 256K context halves decode
+### 4. 256K context costs ~26% of decode at long context
 
-| `-c` | ready GTT | Vulkan0 compute buf | prefill | decode |
-|---:|---:|---:|---:|---:|
-| 131072 | 87.1 GiB | 2322 MiB | 208.1 | **27.18** |
-| 262144 | 93.0 GiB | 4386 MiB | 206.5 | **13.74** |
+| `-c` | ready GTT | Vulkan0 compute buf | prefill | decode @52K | decode, short prompt |
+|---:|---:|---:|---:|---:|---:|
+| 131072 | 87.1 GiB | 2322 MiB | 208.1 | **27.18** | 27.55 |
+| 262144 | 93.0 GiB | 4386 MiB | 206.8 | **20.23** | 26.87 |
 
-It loads fine and there is memory to spare — but decode drops by half. Acceptance rate,
-accepted tokens, and mean draft length are **identical** (0.69663, 310/445, 4.48), and
-draft generation only costs 12% more. The loss is in the **target model** at large
-`n_ctx`, not in speculation. Pick 131072 unless you truly need the window.
+It loads with room to spare. Short prompts are essentially unaffected (26.87 vs 27.55);
+a 52K prompt costs about 26%. Acceptance is **bit-identical** between the two (0.69663,
+310/445 accepted, mean length 4.48), so the loss is in the **target model** at large
+`n_ctx`, not in speculation. Prefill is unaffected (206.8 vs 208.1).
+
+> **Measurement caveat.** An earlier single run of the same configuration produced
+> 13.74 t/s — 47% below the 20.23 measured later under identical settings. Decode on
+> this model is not reproducible from one run: the first measurement followed several
+> back-to-back server restarts. **Measure each configuration at least twice.** The
+> numbers in this repository are single runs unless stated otherwise; treat differences
+> under ~10% as unresolved.
 
 ---
 
