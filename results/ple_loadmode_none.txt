@@ -1,0 +1,5 @@
+0.04.028.759 I load_tensors:          CPU model buffer size = 27465.95 MiB
+0.04.028.760 I load_tensors:      Vulkan0 model buffer size = 78056.39 MiB
+0.04.028.761 I load_tensors:  Vulkan_Host model buffer size =   644.14 MiB
+1.35.357.025 I sched_reserve:    Vulkan0 compute buffer size =  2322.14 MiB
+1.35.357.029 I sched_reserve: Vulkan_Host compute buffer size =   907.61 MiB

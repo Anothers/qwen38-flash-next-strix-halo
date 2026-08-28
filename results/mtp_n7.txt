@@ -1,0 +1,27 @@
+1.42.642.180 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =   2048, progress = 0.04, t =   5.92 s / 345.67 tokens per second
+1.49.066.290 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =   4096, progress = 0.08, t =  12.39 s / 330.55 tokens per second
+1.55.786.938 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =   6144, progress = 0.12, t =  19.10 s / 321.73 tokens per second
+2.02.877.184 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =   8192, progress = 0.16, t =  26.17 s / 313.03 tokens per second
+2.10.395.333 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  10240, progress = 0.20, t =  33.68 s / 304.08 tokens per second
+2.18.634.077 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  12288, progress = 0.25, t =  41.90 s / 293.30 tokens per second
+2.27.578.679 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  14336, progress = 0.29, t =  50.82 s / 282.10 tokens per second
+2.36.993.513 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  16384, progress = 0.33, t =  60.22 s / 272.09 tokens per second
+2.46.805.565 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  18432, progress = 0.37, t =  70.01 s / 263.28 tokens per second
+2.56.918.855 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  20480, progress = 0.41, t =  80.11 s / 255.66 tokens per second
+3.07.112.050 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  22528, progress = 0.45, t =  90.28 s / 249.53 tokens per second
+3.17.447.117 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  24576, progress = 0.49, t = 100.60 s / 244.30 tokens per second
+3.27.791.138 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  26624, progress = 0.53, t = 110.93 s / 240.00 tokens per second
+3.38.228.509 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  28672, progress = 0.57, t = 121.37 s / 236.24 tokens per second
+3.48.894.645 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  30720, progress = 0.61, t = 132.02 s / 232.69 tokens per second
+3.59.845.518 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  32768, progress = 0.65, t = 142.96 s / 229.22 tokens per second
+4.10.904.161 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  34816, progress = 0.69, t = 154.00 s / 226.08 tokens per second
+4.22.199.258 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  36864, progress = 0.74, t = 165.28 s / 223.04 tokens per second
+4.33.742.650 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  38912, progress = 0.78, t = 176.82 s / 220.06 tokens per second
+4.45.503.272 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  40960, progress = 0.82, t = 188.57 s / 217.21 tokens per second
+4.57.401.135 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  43008, progress = 0.86, t = 200.46 s / 214.55 tokens per second
+5.09.500.393 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  45056, progress = 0.90, t = 212.54 s / 211.98 tokens per second
+5.21.831.025 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  47104, progress = 0.94, t = 224.86 s / 209.48 tokens per second
+5.33.756.756 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  49091, progress = 0.98, t = 236.87 s / 207.25 tokens per second
+5.40.179.959 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =  50115, progress = 1.00, t = 243.47 s / 205.84 tokens per second
+6.00.681.510 I slot print_timing: id  0 | task 0 | draft acceptance = 0.57374 (  319 accepted /   556 generated), mean len =  4.99
+6.00.714.968 I spec common_specu: statistics        draft-mtp: #calls(b,g,a) =    1     80     80, #gen drafts =     80, #acc drafts =    65, #gen tokens =    556, #acc tokens =   319, #mean acc len = 4.99, #acc rate/pos = (0.812, 0.725, 0.625, 0.537, 0.487, 0.425, 0.375), dur(b,g,a) = 0.004, 2794.611, 0.336 ms
