@@ -9,6 +9,13 @@ Running **Qwen3.8-Flash-Next** (`qwen4exp`, 176B total / 6B active) on an
 
 [中文版 / Chinese](README.zh-CN.md)
 
+> **Read [`docs/TUNE-FOR-YOUR-WORKLOAD.md`](docs/TUNE-FOR-YOUR-WORKLOAD.md) before using any
+> number below.** Everything here was measured with a 52K synthetic prompt, which turned out
+> to sit past the 99th percentile of real traffic on the machine it was written on. The
+> optimal `--spec-draft-n-max` is **2** for short-prompt chat and **3** for code, not the
+> **5** this benchmark suggests — an 18% difference on the workload that actually dominates.
+> That document also **retracts** the claim that `-c 262144` slows decode.
+
 ---
 
 ## Results on this machine
@@ -146,26 +153,17 @@ tensors >4 GiB, see `llama-model-loader.cpp`) versus `none` (read fully into RAM
 > On a unified-memory machine the premise behind "offload to CPU to save VRAM" does not
 > hold anyway: GTT and host RAM are the same physical DRAM.
 
-### 4. 256K context costs ~26% of decode at long context
+### 4. Allocated context size — claim retracted
 
-| `-c` | ready GTT | Vulkan0 compute buf | prefill | decode @52K | decode, short prompt |
-|---:|---:|---:|---:|---:|---:|
-| 131072 | 87.1 GiB | 2322 MiB | 208.1 | **27.18** | 27.55 |
-| 262144 | 93.0 GiB | 4386 MiB | 206.8 | **20.23** | 26.87 |
+An earlier revision reported that `-c 262144` costs 26–43% of long-context decode versus
+`-c 131072`. **That is withdrawn.** The supporting sweep had a fixed configuration order,
+the order-reversed control never completed, and at the real working point the two settings
+measure identically. Source review found every relevant quantity scales with *used* context,
+not allocated. Details and the full retraction are in
+[`docs/TUNE-FOR-YOUR-WORKLOAD.md`](docs/TUNE-FOR-YOUR-WORKLOAD.md).
 
-It loads with room to spare. Short prompts are essentially unaffected (26.87 vs 27.55);
-a 52K prompt costs about 26%. Acceptance is **bit-identical** between the two (0.69663,
-310/445 accepted, mean length 4.48), so the loss is in the **target model** at large
-`n_ctx`, not in speculation. Prefill is unaffected (206.8 vs 208.1).
-
-> **Measurement caveat.** An earlier single run of the same configuration produced
-> 13.74 t/s — 47% below the 20.23 measured later under identical settings. Decode on
-> this model is not reproducible from one run: the first measurement followed several
-> back-to-back server restarts. **Measure each configuration at least twice.** The
-> numbers in this repository are single runs unless stated otherwise; treat differences
-> under ~10% as unresolved.
-
----
+A smaller `-c` is still worth choosing for the memory it does not commit (87.1 vs 93.0 GiB
+here), just not for the throughput reason previously given.
 
 ## Why these patches
 
