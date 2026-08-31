@@ -14,7 +14,8 @@ Running **Qwen3.8-Flash-Next** (`qwen4exp`, 176B total / 6B active) on an
 > to sit past the 99th percentile of real traffic on the machine it was written on. The
 > optimal `--spec-draft-n-max` is **2** for short-prompt chat and **3** for code, not the
 > **5** this benchmark suggests — an 18% difference on the workload that actually dominates.
-> That document also **retracts** the claim that `-c 262144` slows decode.
+> That document also **retracts** the claim that `-c 262144` slows decode; the number below
+> is the replacement measurement.
 
 ---
 
@@ -46,6 +47,11 @@ Where every millisecond of a decode step actually goes, measured per operation w
 the GPU is busy **97.6%** of wall time, nine of the top ten operations already run at the
 memory-bandwidth ceiling, and only **5.3%** of decode sits in two inefficient kernels.
 
+**[docs/VULKAN-TOPK-FALLBACK.md](docs/VULKAN-TOPK-FALLBACK.md)** covers a separate one: past
+roughly 1K of context, twelve `ggml_top_k` nodes per token stop being supported on Vulkan and
+run on the CPU instead. It is worth ~9% of decode here, and it is a slope on an APU rather
+than the 3–4x cliff the same limit produces on HIP.
+
 [`docs/WHY-IT-IS-FAST.md`](docs/WHY-IT-IS-FAST.md) is the earlier analysis, kept because
 its reasoning is instructive — but its two central mechanisms were both falsified by that
 profile. Read the measured one first.
@@ -67,7 +73,7 @@ profile. Read the measured one first.
     --out /data/qwen38-flash-next/mtp/mtp-Qwen3.8-Flash-Next-Q8_0-fixed.gguf
 
 # 4. serve
-./scripts/serve.sh --model-dir /data/qwen38-flash-next --ctx 131072 --n-max 5
+./scripts/serve.sh --model-dir /data/qwen38-flash-next --ctx 262144 --n-max 2
 ```
 
 ---
@@ -83,6 +89,18 @@ LLAMA_ATTN_ROT_DISABLE=1 llama-server \
   -ctk q8_0 -ctv q8_0 --no-context-shift \
   --jinja --reasoning-format auto -t 16 --load-mode none
 ```
+
+### Why `n-max 2` and `-c 262144`
+
+`--spec-draft-n-max 5` is what a 52K cold-prefill sweep picks, and that sweep is not the
+workload. At the prompt lengths real chat produces, **2** is 21% faster. Code generation
+sits between the two; 2 is still the better single default.
+
+`-c 262144` costs about **4%** of decode at a 52K depth (23.5 → 22.6 t/s) and roughly 6 GiB
+of GTT, for twice the window. Both numbers come from an A-B-B-A run — 131072, 262144,
+262144, 131072 — because the earlier sweep that produced the withdrawn "26–43%" figure had
+a fixed configuration order, and the first run of any configuration carries a warm-up
+artifact that lands entirely on whichever setting goes second.
 
 Sampling (unsloth's published values): instruct `temp 0.7 / top_p 0.80 / top_k 20 /
 presence_penalty 1.5`; thinking `temp 1.0 / top_p 0.95 / top_k 20 / min_p 0`.
