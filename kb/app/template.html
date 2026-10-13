@@ -1,0 +1,372 @@
+<title>本体知识库检索台</title>
+<style>
+/* Layout: instrument-panel. Left a vector-space map that plays the search; right the query's
+   vector and the per-dimension products; results strip below. */
+:root{
+  --bg:#f2f4f7; --panel:#ffffff; --line:#d9dee6; --ink:#141b2b; --mute:#5d6778;
+  --accent:#2457f5; --accent-soft:#dbe4ff; --query:#d9730d; --pos:#2457f5; --neg:#d9730d;
+  --dot:#8d97a8; --good:#14804a;
+  --font-ui:"IBM Plex Sans","PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0d121d; --panel:#141b2a; --line:#27324a; --ink:#e7ecf6; --mute:#98a3b8;
+  --accent:#7ea3ff; --accent-soft:#1d2c55; --query:#ffb454; --pos:#7ea3ff; --neg:#ffb454;
+  --dot:#5f6b84; --good:#52d08d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d121d; --panel:#141b2a; --line:#27324a; --ink:#e7ecf6; --mute:#98a3b8;
+  --accent:#7ea3ff; --accent-soft:#1d2c55; --query:#ffb454; --pos:#7ea3ff; --neg:#ffb454;
+  --dot:#5f6b84; --good:#52d08d; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-ui);font-size:14px;line-height:1.55;
+  padding-inline:16px;padding-block:20px 48px}
+*{box-sizing:border-box}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1{font-size:22px;line-height:1.25;margin:0;font-weight:600;letter-spacing:.01em;text-wrap:balance}
+.sub{color:var(--mute);margin:2px 0 0}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.bar{display:flex;flex-direction:column;gap:10px;padding:14px}
+form{display:flex;gap:8px}
+input[type=text]{flex:1;min-width:0;font:inherit;font-size:15px;color:var(--ink);background:var(--bg);
+  border:1px solid var(--line);border-radius:8px;padding:9px 12px}
+input[type=text]:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button,select{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+:root[data-theme="dark"] button.primary{color:#0d121d}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) button.primary{color:#0d121d}}
+button:disabled{opacity:.55;cursor:default}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12.5px;padding:3px 10px;border-radius:99px;background:var(--bg);border:1px solid var(--line);color:var(--mute);cursor:pointer}
+.chip:hover{color:var(--ink);border-color:var(--accent)}
+.opts{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;color:var(--mute);font-size:13px}
+.opts label{display:flex;gap:6px;align-items:center}
+.opts select{padding:4px 8px}
+.mode{margin-left:auto;display:flex;gap:8px;align-items:center}
+.badge{font-size:12px;padding:2px 9px;border-radius:99px;border:1px solid var(--line)}
+.badge.live{color:var(--good);border-color:var(--good)}
+.notice{margin:0;padding:8px 12px;border-radius:8px;background:var(--accent-soft);font-size:13px}
+.notice[hidden]{display:none}
+.rail{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px 14px}
+.step{padding:6px 10px;border-radius:7px;border:1px solid transparent;color:var(--mute);font-size:13px;display:flex;gap:8px;align-items:baseline}
+.step b{font-family:var(--font-mono);font-weight:500}
+.step.on{color:var(--ink);background:var(--accent-soft);border-color:var(--accent)}
+.step.done{color:var(--ink)}
+.caption{padding:0 14px 12px;color:var(--mute);min-height:2.6em;font-size:13px}
+.stage{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:14px}
+.mapbox{position:relative;aspect-ratio:4/3;overflow:hidden;min-width:0}
+.mapbox canvas{position:absolute;inset:0;width:100%;height:100%}
+.tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:5px 9px;
+  font-size:12.5px;max-width:260px;box-shadow:0 4px 14px rgb(0 0 0/.14)}
+.legend{position:absolute;left:10px;bottom:8px;font-size:11.5px;color:var(--mute);display:flex;gap:12px;pointer-events:none}
+.side{display:flex;flex-direction:column;gap:14px;min-width:0}
+.card{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.card h2{margin:0;font-size:13px;font-weight:600;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.card h2 span{color:var(--mute);font-weight:400;font-size:12px}
+.toks{display:flex;flex-wrap:wrap;gap:4px;min-height:26px}
+.tok{font-family:var(--font-mono);font-size:12.5px;padding:1px 7px;border-radius:5px;background:var(--bg);border:1px solid var(--line);opacity:.12;transition:opacity .25s,border-color .25s}
+.tok.on{opacity:1;border-color:var(--accent)}
+.grid{width:100%;aspect-ratio:3/1;display:block;border-radius:5px;background:var(--bg)}
+.read{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;flex-wrap:wrap}
+.read strong{font-size:15px}
+.results{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:10px}
+.res{padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel);cursor:pointer;display:flex;flex-direction:column;gap:6px;
+  min-width:0;animation:rise .4s both}
+.res:hover,.res.sel{border-color:var(--accent)}
+.res .top{display:flex;gap:10px;align-items:center}
+.rank{font-family:var(--font-mono);font-size:20px;color:var(--accent);width:1.4em}
+.meter{flex:1;height:6px;background:var(--bg);border-radius:4px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.score{font-family:var(--font-mono);font-size:13px}
+.res h3{margin:0;font-size:14px;font-weight:600;text-wrap:balance}
+.res .meta{color:var(--mute);font-size:12px}
+.res p{margin:0;white-space:pre-line;font-size:13px;overflow-wrap:anywhere}
+.res:not(.sel) p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.empty{padding:18px;color:var(--mute);text-align:center}
+.how{padding:12px 14px;color:var(--mute);font-size:13px}
+.how b{color:var(--ink)}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (max-width:820px){.stage{grid-template-columns:minmax(0,1fr)}.mapbox{aspect-ratio:auto;height:340px}.rail{grid-template-columns:1fr 1fr}.mode{margin-left:0;width:100%}
+  .chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}.chip{white-space:nowrap;flex:none}}
+@media (prefers-reduced-motion:reduce){.res{animation:none}.tok{transition:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>本体知识库检索台</h1>
+    <p class="sub" id="meta"></p>
+  </header>
+
+  <div class="panel bar">
+    <form id="f">
+      <input type="text" id="q" autocomplete="off" placeholder="输入问题，例如：私有字段如何防止泄露" aria-label="检索问题">
+      <button class="primary" id="go" type="submit">检索</button>
+    </form>
+    <div class="chips" id="chips"></div>
+    <div class="opts">
+      <label>Top-K <select id="k"><option>3</option><option selected>5</option><option>8</option></select></label>
+      <label>向量维度 <select id="dim"><option>768</option><option>512</option><option>256</option><option>128</option></select></label>
+      <label>速度 <select id="sp"><option value="1.7">慢</option><option value="1" selected>正常</option><option value="0.45">快</option></select></label>
+      <button type="button" id="replay">重播</button>
+      <button type="button" id="skip">跳过动画</button>
+      <span class="mode"><span class="badge" id="badge"></span><button type="button" id="load">加载浏览器模型（WebGPU 175 MB / 否则 1.1 GB）</button></span>
+    </div>
+    <p class="notice" id="note" hidden></p>
+  </div>
+
+  <div class="panel">
+    <div class="rail" id="rail">
+      <div class="step"><b>1</b>分词</div>
+      <div class="step"><b>2</b>嵌入成 768 维向量</div>
+      <div class="step"><b>3</b>与每个片段比对</div>
+      <div class="step"><b>4</b>取分数最高的 K 个</div>
+    </div>
+    <div class="caption" id="cap"></div>
+  </div>
+
+  <div class="stage">
+    <div class="panel mapbox" id="mapbox">
+      <canvas id="map"></canvas>
+      <div class="legend"><span>● 知识库片段</span><span style="color:var(--query)">★ 查询</span><span>颜色越深、点越大，相似度越高</span></div>
+      <div class="tip" id="tip" hidden></div>
+    </div>
+    <div class="side">
+      <div class="panel card">
+        <h2>查询的分词 <span id="tokn"></span></h2>
+        <div class="toks" id="toks"></div>
+      </div>
+      <div class="panel card">
+        <h2>查询向量 <span id="qdim"></span></h2>
+        <canvas class="grid" id="gq"></canvas>
+      </div>
+      <div class="panel card">
+        <h2>逐维相乘 qᵢ × dᵢ <span id="curdoc"></span></h2>
+        <canvas class="grid" id="gp"></canvas>
+        <div class="read mono"><span>cos(q, d) = Σ qᵢ·dᵢ</span><strong id="sum">–</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="res" class="results"></div>
+
+  <div class="panel how">
+    <b>怎么搜到的。</b>每个片段事先被模型变成一条 768 维的向量，存在知识库里。检索时，问题经过同一个模型变成向量 q，
+    再和 <span id="nn"></span> 个片段的向量逐个计算余弦相似度（两个向量逐维相乘再求和，上面的色块就是这 768 个乘积），
+    最后按分数取前 K 个。左图把 768 维用主成分分析压到 2 维来示意位置，压缩会丢信息，所以查询点不一定紧挨着命中的点；
+    真正的排序只看 768 维的分数。
+  </div>
+</div>
+
+<script id="kb" type="application/json">__KB_JSON__</script>
+<script>
+(()=>{
+const $=s=>document.querySelector(s);
+const KB=JSON.parse($('#kb').textContent), C=KB.chunks, N=C.length, D=KB.dim, EX=KB.examples||[];
+const P=new URLSearchParams(location.search);
+const V=new Float32Array(N*D); C.forEach((c,i)=>V.set(c.vec,i*D));
+const MEAN=Float32Array.from(KB.pca_mean), AX=KB.pca_axes.map(a=>Float32Array.from(a)), SC=KB.pca_scale;
+const QP='task: search result | query: ';
+$('#meta').textContent=`报告第 ${Math.min(...C.map(c=>c.page))}–${Math.max(...C.map(c=>c.page))} 页 · ${N} 个片段 · ${KB.model} · ${D} 维`;
+$('#nn').textContent=N;
+
+/* ---------- vectors ---------- */
+const dv={}; // per-dimension normalised doc matrix
+function docs(dim){ if(dv[dim]) return dv[dim];
+  const m=new Float32Array(N*dim);
+  for(let i=0;i<N;i++){let s=0;for(let j=0;j<dim;j++){const x=V[i*D+j];s+=x*x}
+    s=Math.sqrt(s)||1;for(let j=0;j<dim;j++)m[i*dim+j]=V[i*D+j]/s}
+  return dv[dim]=m }
+function trunc(q,dim){const o=new Float32Array(dim);let s=0;for(let j=0;j<dim;j++){o[j]=q[j];s+=q[j]*q[j]}
+  s=Math.sqrt(s)||1;for(let j=0;j<dim;j++)o[j]/=s;return o}
+function search(q,dim){
+  const m=docs(dim), t=trunc(q,dim), sc=new Float32Array(N);
+  for(let i=0;i<N;i++){let s=0;for(let j=0;j<dim;j++)s+=t[j]*m[i*dim+j];sc[i]=s}
+  const order=[...sc.keys()].sort((a,b)=>sc[b]-sc[a]);
+  let lo=Infinity,hi=-Infinity;sc.forEach(s=>{lo=Math.min(lo,s);hi=Math.max(hi,s)});
+  return {t,sc,order,lo,hi,dim}}
+function project(q){const o=[];for(let a=0;a<2;a++){let s=0;for(let j=0;j<D;j++)s+=(q[j]-MEAN[j])*AX[a][j];o.push(s/SC[a])}return o}
+
+/* ---------- model (optional) ---------- */
+let M=null; // {tok, model}
+async function loadModel(){
+  const lib=P.get('lib')||'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.1';
+  const T=await import(lib);
+  if(P.get('wasm')) T.env.backends.onnx.wasm.wasmPaths=P.get('wasm');
+  if(P.get('mirror')) T.env.remoteHost='https://'+P.get('mirror')+'/';
+  let id='onnx-community/embeddinggemma-2-ONNX';
+  if(P.get('model')){T.env.allowLocalModels=true;T.env.allowRemoteModels=false;T.env.localModelPath=P.get('localpath')||'/models/';id=P.get('model')}
+  const cb=p=>{if(p.status==='progress'&&p.total)$('#load').textContent=`下载中 ${Math.round(p.loaded/p.total*100)}%`};
+  const cfg=await T.AutoConfig.from_pretrained(id); cfg.vision_config=cfg.audio_config=null; // text only
+  const tok=await T.AutoTokenizer.from_pretrained(id,{progress_callback:cb});
+  // the quantised builds use a GatherBlockQuantized kernel that only WebGPU has; WASM needs full precision
+  let dev=P.get('device')||'wasm';
+  if(!P.get('device')&&navigator.gpu){try{if(await navigator.gpu.requestAdapter())dev='webgpu'}catch(e){}}
+  const model=await T.AutoModel.from_pretrained(id,{config:cfg,dtype:dev==='webgpu'?'q4':'fp32',device:dev,progress_callback:cb});
+  M={tok,model}}
+async function embed(text){
+  const o=await M.model(await M.tok(QP+text,{padding:true}));
+  const e=Float32Array.from(o.sentence_embedding.data);let s=0;e.forEach(x=>s+=x*x);s=Math.sqrt(s)||1;
+  return e.map(x=>x/s)}
+function tokens(text){try{return M.tok.tokenize(text).map(t=>t.replace(/▁/g,'')).filter(Boolean)}catch(e){return [...text]}}
+function grams(s){const g=new Set(),t=s.replace(/\s/g,'');for(let i=0;i<t.length-1;i++)g.add(t.slice(i,i+2));return g}
+function nearestExample(text){const a=grams(text);let best=null,bs=0;
+  EX.forEach(e=>{const b=grams(e.q);let n=0;a.forEach(x=>b.has(x)&&n++);const j=n/(a.size+b.size-n||1);if(j>bs){bs=j;best=e}});
+  return bs>=.12?best:null}
+
+/* ---------- state ---------- */
+const TL={tok:[0,900],emb:[900,2200],prj:[2200,3000],scan:[3000,5200],top:[5200,6600]}, END=6900;
+let S=null, clock=END, playing=false, last=0, sel=-1, hover=-1, shown=0, rafId=0;
+const cv=$('#map'), cx=cv.getContext('2d'), gq=$('#gq'), gp=$('#gp');
+let col={};
+function readColors(){const s=getComputedStyle(document.documentElement);
+  ['accent','query','pos','neg','dot','ink','mute','line','panel','bg'].forEach(k=>col[k]=s.getPropertyValue('--'+k).trim())}
+const ease=x=>x<0?0:x>1?1:x*x*(3-2*x), prog=(t,[a,b])=>Math.max(0,Math.min(1,(t-a)/(b-a)));
+function rgba(hex,a){const h=hex.replace('#','');const n=parseInt(h.length===3?h.replace(/./g,'$&$&'):h,16);return `rgba(${n>>16},${n>>8&255},${n&255},${a})`}
+
+function fit(c){const r=c.getBoundingClientRect(),d=devicePixelRatio||1;
+  if(c.width!==Math.round(r.width*d)||c.height!==Math.round(r.height*d)){c.width=Math.round(r.width*d);c.height=Math.round(r.height*d)}
+  const g=c.getContext('2d');g.setTransform(d,0,0,d,0,0);return [r.width,r.height,g]}
+
+/* ---------- drawing ---------- */
+function pos(i,W,H){const p=C[i].xy,pad=26;return [pad+(p[0]+1.2)/2.4*(W-2*pad), H-pad-(p[1]+1.2)/2.4*(H-2*pad)]}
+function qpos(W,H){const p=S.qxy,pad=26,cl=v=>Math.max(-1.18,Math.min(1.18,v));
+  return [pad+(cl(p[0])+1.2)/2.4*(W-2*pad), H-pad-(cl(p[1])+1.2)/2.4*(H-2*pad)]}
+function drawMap(t){
+  const [W,H,g]=fit(cv); g.clearRect(0,0,W,H);
+  g.strokeStyle=rgba(col.line,.6);g.lineWidth=1;
+  for(let k=1;k<6;k++){g.beginPath();g.moveTo(W*k/6,0);g.lineTo(W*k/6,H);g.moveTo(0,H*k/6);g.lineTo(W,H*k/6);g.stroke()}
+  const nScan=S?Math.floor(ease(prog(t,TL.scan))*N):0, tp=S?ease(prog(t,TL.top)):0;
+  const topSet=S?new Set(S.order.slice(0,S.k)):new Set();
+  for(let i=0;i<N;i++){const [x,y]=pos(i,W,H);let r=3.2,a=.5,c=col.dot;
+    if(S&&i<nScan||S&&t>=TL.top[0]){const u=(S.sc[i]-S.lo)/((S.hi-S.lo)||1);r=2.6+7*Math.pow(u,1.5);a=.2+.8*u;c=col.accent}
+    if(S&&tp>0&&!topSet.has(i)) a*=1-.8*tp;
+    g.fillStyle=rgba(c,a);g.beginPath();g.arc(x,y,r,0,7);g.fill();
+    if(i===sel||i===hover){g.strokeStyle=col.ink;g.lineWidth=1.5;g.beginPath();g.arc(x,y,r+4,0,7);g.stroke()}}
+  if(!S) return;
+  const [qx,qy]=qpos(W,H), pj=ease(prog(t,TL.prj));
+  if(t>=TL.prj[0]){
+    const sx=34,sy=34,x=sx+(qx-sx)*pj,y=sy+(qy-sy)*pj;
+    // scan beam: line from query to the chunk being compared + faint echoes
+    if(t>=TL.scan[0]&&t<TL.top[0]&&nScan>0){
+      for(let e=0;e<7;e++){const i=nScan-1-e;if(i<0)break;const [dx,dy]=pos(i,W,H);
+        g.strokeStyle=rgba(col.query,(.85-e*.12)*(e?1:1));g.lineWidth=e?1:1.8;g.beginPath();g.moveTo(qx,qy);g.lineTo(dx,dy);g.stroke()}}
+    if(tp>0){let r=1;for(const i of S.order.slice(0,S.k)){const [dx,dy]=pos(i,W,H);
+      const mx=(qx+dx)/2+(dy-qy)*.12,my=(qy+dy)/2-(dx-qx)*.12;
+      g.strokeStyle=rgba(col.accent,.75*tp);g.lineWidth=2;g.beginPath();g.moveTo(qx,qy);
+      g.quadraticCurveTo(mx,my,qx+(dx-qx)*tp,qy+(dy-qy)*tp);g.stroke();
+      if(tp>.7){g.fillStyle=col.accent;g.beginPath();g.arc(dx+10,dy-10,9,0,7);g.fill();
+        g.fillStyle=col.panel;g.font='600 11px '+getComputedStyle(document.body).fontFamily;g.textAlign='center';g.textBaseline='middle';
+        g.fillText(r,dx+10,dy-10)}r++}}
+    star(g,x,y,10,col.query,pj>=1?1+.12*Math.sin(t/180):1);
+    if(pj>=1){g.strokeStyle=rgba(col.query,.5);g.lineWidth=1.2;const rr=14+((t/20)%26);g.globalAlpha=1-((t/20)%26)/26;
+      g.beginPath();g.arc(qx,qy,rr,0,7);g.stroke();g.globalAlpha=1}}
+  else if(t>=TL.emb[0]){star(g,34,34,8,col.query,.6)}}
+function star(g,x,y,R,c,k){g.save();g.translate(x,y);g.scale(k,k);g.fillStyle=c;g.beginPath();
+  for(let i=0;i<10;i++){const r=i%2?R*.45:R,a=-Math.PI/2+i*Math.PI/5;g.lineTo(Math.cos(a)*r,Math.sin(a)*r)}g.closePath();g.fill();g.restore()}
+
+function drawGrid(c,val,scale,dim,reveal){
+  const [W,H,g]=fit(c);g.clearRect(0,0,W,H);const cols=48,rows=16,cw=W/cols,ch=H/rows,n=Math.floor(reveal*D);
+  for(let i=0;i<D;i++){const x=(i%cols)*cw,y=Math.floor(i/cols)*ch;
+    if(i>=n){continue}
+    if(i>=dim){g.fillStyle=rgba(col.line,.35);g.fillRect(x+1,y+1,cw-2,ch-2);continue}
+    const v=val(i)/scale;g.fillStyle=rgba(v>=0?col.pos:col.neg,Math.min(1,.08+Math.abs(v)*.92));g.fillRect(x+.5,y+.5,cw-1,ch-1)}}
+
+/* ---------- per-frame ---------- */
+let lastStep=-9,lastCap='',lastTok=-1;
+function frame(t){
+  if(!S){drawMap(0);return}
+  drawMap(t);
+  const eP=ease(prog(t,TL.emb)), dim=S.dim;
+  drawGrid(gq,i=>S.t[i],S.qmax,dim,eP);
+  // product grid: the chunk currently being compared (or the best one at rest)
+  const nScan=Math.floor(ease(prog(t,TL.scan))*N), atRest=t>=TL.top[0];
+  const ci=sel>=0?sel:atRest?S.order[0]:Math.max(0,nScan-1);
+  if(t>=TL.scan[0]||atRest){const m=docs(dim);
+    drawGrid(gp,i=>S.t[i]*m[ci*dim+i],S.pmax,dim,1);
+    $('#sum').textContent=S.sc[ci].toFixed(4);
+    $('#curdoc').textContent=`第 ${ci+1} 段 · p.${C[ci].page}`}
+  else{drawGrid(gp,()=>0,1,dim,0);$('#sum').textContent='–';$('#curdoc').textContent=''}
+  // tokens
+  const tk=Math.ceil(ease(prog(t,TL.tok))*S.tokens.length);
+  if(tk!==lastTok){[...$('#toks').children].forEach((el,i)=>el.classList.toggle('on',i<tk));lastTok=tk}
+  // rail + caption
+  const step=t<TL.emb[0]?0:t<TL.prj[0]?1:t<TL.top[0]?2:3, done=t>=END;
+  if(step!==lastStep||done){[...$('#rail').children].forEach((el,i)=>{el.classList.toggle('on',i===step&&!done);el.classList.toggle('done',i<step||done)});lastStep=step}
+  let cap;
+  if(t<TL.emb[0]) cap=`分词器把问题切成 ${S.tokens.length} 个词元。`;
+  else if(t<TL.prj[0]) cap=`模型把整句话压成一条 ${D} 维向量，右侧每个色块是其中一维（蓝正橙负）。当前只用前 ${dim} 维。`;
+  else if(t<TL.scan[0]) cap='向量用主成分投影到左侧的地图上，星标是问题的位置。';
+  else if(t<TL.top[0]){const best=Math.max(...S.sc.slice(0,Math.max(1,nScan)));cap=`正在比对第 ${Math.max(1,nScan)} / ${N} 段，已见到的最高分 ${best.toFixed(3)}。`}
+  else cap=`${N} 段全部比对完，按分数取前 ${S.k} 个。分数范围 ${S.lo.toFixed(3)} 到 ${S.hi.toFixed(3)}。点击结果或圆点可以查看逐维乘积。`;
+  if(cap!==lastCap){$('#cap').textContent=cap;lastCap=cap}
+  if(t>=TL.top[0]+500&&shown===0)showResults();
+}
+function loop(now){
+  if(!playing)return;const dt=Math.min(60,now-last);last=now;clock=Math.min(END,clock+dt/S.sp);
+  frame(clock);if(clock>=END){playing=false;frame(END);return}rafId=requestAnimationFrame(loop)}
+function draw(){frame(clock)}
+
+/* ---------- results ---------- */
+function showResults(){shown=1;const box=$('#res');box.innerHTML='';
+  S.order.slice(0,S.k).forEach((i,r)=>{const c=C[i],el=document.createElement('div');el.className='res'+(i===sel?' sel':'');el.dataset.i=i;
+    el.style.animationDelay=(r*90)+'ms';
+    el.innerHTML=`<div class="top"><span class="rank">${r+1}</span><div class="meter"><i style="width:${Math.max(0,S.sc[i])*100}%"></i></div><span class="score">${S.sc[i].toFixed(3)}</span></div>
+    <h3></h3><div class="meta"></div><p></p>`;
+    el.querySelector('h3').textContent=c.title;el.querySelector('.meta').textContent=`第 ${c.page} 页${c.section?' · '+c.section:''}`;
+    el.querySelector('p').textContent=c.text;el.onclick=()=>select(i);box.appendChild(el)})}
+function select(i){sel=sel===i?-1:i;document.querySelectorAll('.res').forEach(e=>e.classList.toggle('sel',+e.dataset.i===sel));draw()}
+
+/* ---------- run ---------- */
+async function run(text,{instant=false,vec=null,tokensArr=null}={}){
+  cancelAnimationFrame(rafId);playing=false;
+  const dim=+$('#dim').value,k=+$('#k').value;let q=vec,tk=tokensArr;
+  if(M){q=await embed(text);tk=tokens(text)}
+  const r=search(q,dim);
+  let qmax=0;for(let i=0;i<dim;i++)qmax=Math.max(qmax,Math.abs(r.t[i]));
+  const best=r.order[0],m=docs(dim);let pmax=0;for(let i=0;i<dim;i++)pmax=Math.max(pmax,Math.abs(r.t[i]*m[best*dim+i]));
+  S={...r,k,q,qxy:project(q),tokens:tk,qmax:qmax*.8,pmax:pmax*.8,sp:+$('#sp').value};
+  sel=-1;shown=0;lastTok=-1;lastStep=-9;$('#res').innerHTML='';
+  $('#toks').innerHTML='';tk.forEach(t=>{const s=document.createElement('span');s.className='tok';s.textContent=t;$('#toks').appendChild(s)});
+  $('#tokn').textContent=`${tk.length} 个`;$('#qdim').textContent=`取前 ${dim} 维`;
+  const still=instant||matchMedia('(prefers-reduced-motion:reduce)').matches;
+  if(still){clock=END;frame(END);return}
+  clock=0;playing=true;last=performance.now();rafId=requestAnimationFrame(loop)}
+let cur=null;
+function go(text,instant=false){text=text.trim();if(!text)return;cur=text;$('#q').value=text;const n=$('#note');n.hidden=true;
+  if(M)return run(text,{instant});
+  const ex=EX.find(e=>e.q===text)||nearestExample(text);
+  if(!ex){n.hidden=false;n.textContent='演示模式只带了预先算好的问题向量，没有找到接近的预置问题。请点上面的示例，或加载浏览器模型后输入任意问题。';return}
+  if(ex.q!==text){n.hidden=false;n.textContent=`演示模式无法现场计算向量，已按字面相似度匹配到最接近的预置问题：“${ex.q}”。`}
+  return run(ex.q,{vec:Float32Array.from(ex.vec),tokensArr:ex.tokens,instant})}
+
+/* ---------- wiring ---------- */
+EX.forEach(e=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=e.q;b.onclick=()=>go(e.q);$('#chips').appendChild(b)});
+$('#f').onsubmit=e=>{e.preventDefault();go($('#q').value)};
+$('#replay').onclick=()=>cur&&go(cur);
+$('#skip').onclick=()=>{if(!S)return;cancelAnimationFrame(rafId);playing=false;clock=END;frame(END)};
+['k','dim'].forEach(id=>$('#'+id).onchange=()=>cur&&run0());
+$('#sp').onchange=()=>{if(S)S.sp=+$('#sp').value};
+function run0(){ // re-rank at rest with the new K / dimension, no animation
+  const keep=cur;if(M){run(keep,{instant:true});return}
+  const ex=EX.find(e=>e.q===keep)||nearestExample(keep);if(ex)run(ex.q,{vec:Float32Array.from(ex.vec),tokensArr:ex.tokens,instant:true})}
+function badge(){const b=$('#badge');b.textContent=M?'实时模式 · 浏览器内嵌入':'演示模式 · 预计算向量';b.classList.toggle('live',!!M);$('#load').hidden=!!M}
+$('#load').onclick=async()=>{const b=$('#load');b.disabled=true;b.textContent='加载中…';
+  try{await loadModel();badge();const n=$('#note');n.hidden=false;n.textContent='模型已就绪，现在可以输入任意问题。';cur&&go(cur)}
+  catch(e){console.error(e);b.disabled=false;b.textContent='加载浏览器模型（WebGPU 175 MB / 否则 1.1 GB）';const n=$('#note');n.hidden=false;
+    n.textContent='模型没能加载：当前环境限制了模型下载或不支持。可以继续用演示模式；要自由输入，请按 README 在本地打开这个页面。'}};
+cv.addEventListener('mousemove',ev=>{if(!S||clock<TL.top[0])return;const r=cv.getBoundingClientRect(),x=ev.clientX-r.left,y=ev.clientY-r.top;
+  let b=-1,bd=14;for(let i=0;i<N;i++){const [px,py]=pos(i,r.width,r.height),d=Math.hypot(px-x,py-y);if(d<bd){bd=d;b=i}}
+  if(b!==hover){hover=b;const t=$('#tip');if(b<0)t.hidden=true;else{t.hidden=false;t.textContent=`${C[b].title.slice(0,30)} · p.${C[b].page} · ${S.sc[b].toFixed(3)}`;
+    t.style.left=Math.min(r.width-250,x+12)+'px';t.style.top=(y+12)+'px'}cv.style.cursor=b<0?'default':'pointer';if(!playing)draw()}});
+cv.addEventListener('mouseleave',()=>{hover=-1;$('#tip').hidden=true;if(!playing&&S)draw()});
+cv.addEventListener('click',()=>{if(hover>=0&&S&&S.order.slice(0,S.k).includes(hover)){select(hover);document.querySelector(`.res[data-i="${hover}"]`)?.scrollIntoView({block:'nearest',behavior:'smooth'})}else if(hover>=0){select(hover)}});
+new ResizeObserver(()=>{if(!playing)draw()}).observe($('#mapbox'));
+const rc=()=>{readColors();if(!playing)draw()};
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change',rc);
+new MutationObserver(rc).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+readColors();badge();
+if(P.get('autoload')) $('#load').click();
+// first view renders at rest (finished state); 重播 plays it
+if(EX.length) go(EX[0].q,true); else $('#res').innerHTML='<div class="empty">没有预置问题</div>';
+window.__kb={go,run,get S(){return S},get clock(){return clock},get M(){return M}};
+})();
+</script>
