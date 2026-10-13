@@ -66,6 +66,17 @@ rows = {}
 for dim in (768, 512, 256, 128): rows[f"dense {dim}d (fp32)"] = dense(E, dim)
 if a.q4:
     Eq = np.array(json.load(open(a.q4)), dtype=np.float32); rows["dense 768d (browser q4)"] = dense(Eq, 768)
+if "ctx" in C[0]:
+    # one hit per table / paragraph, as the search page shows them
+    def dedupe(S):
+        out = S.copy()
+        for r in range(len(S)):
+            seen = set()
+            for j in np.argsort(-S[r]):
+                if C[j]["ctx"] in seen: out[r, j] = -9
+                seen.add(C[j]["ctx"])
+        return out
+    rows["dense 768d + context dedupe"] = dedupe(dense(E, 768))
 rows["BM25 char-bigram"] = LEX
 rows["hybrid RRF dense768+BM25"] = rrf(dense(E, 768), LEX)
 print(f"{len(Q)} positive queries, {len(NEG)} negatives, {N} chunks\n")

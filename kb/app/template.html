@@ -81,6 +81,10 @@ button:disabled{opacity:.55;cursor:default}
 .res .meta{color:var(--mute);font-size:12px}
 .res p{margin:0;white-space:pre-line;font-size:13px;overflow-wrap:anywhere}
 .res:not(.sel) p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.kind{font-size:11px;padding:0 6px;border-radius:4px;border:1px solid var(--line);color:var(--mute);margin-right:6px}
+.ctx{display:none;margin:2px 0 0;padding:8px 10px;border-radius:7px;background:var(--bg);font-size:12.5px;color:var(--mute);white-space:pre-wrap;overflow-wrap:anywhere;max-height:260px;overflow:auto}
+.res.sel .ctx{display:block}
+.ctx b{color:var(--ink);font-weight:600}
 .empty{padding:18px;color:var(--mute);text-align:center}
 .how{padding:12px 14px;color:var(--mute);font-size:13px}
 .how b{color:var(--ink)}
@@ -149,7 +153,7 @@ button:disabled{opacity:.55;cursor:default}
   <div id="res" class="results"></div>
 
   <div class="panel how">
-    <b>怎么搜到的。</b>每个片段事先被模型变成一条 768 维的向量，存在知识库里。检索时，问题经过同一个模型变成向量 q，
+    <b>怎么搜到的。</b>报告先按版面拆成检索单元：正文按句子装成不超过 200 字的小段，表格每一行单独一条，每条都带上所在页和小节的标题。每个单元事先被模型变成一条 768 维的向量，存在知识库里。检索时，问题经过同一个模型变成向量 q，
     再和 <span id="nn"></span> 个片段的向量逐个计算余弦相似度（两个向量逐维相乘再求和，上面的色块就是这 768 个乘积），
     最后按分数取前 K 个。左图把 768 维用主成分分析压到 2 维来示意位置，压缩会丢信息，所以查询点不一定紧挨着命中的点；
     真正的排序只看 768 维的分数。
@@ -165,7 +169,8 @@ const P=new URLSearchParams(location.search);
 const V=new Float32Array(N*D); C.forEach((c,i)=>V.set(c.vec,i*D));
 const MEAN=Float32Array.from(KB.pca_mean), AX=KB.pca_axes.map(a=>Float32Array.from(a)), SC=KB.pca_scale;
 const QP='task: search result | query: ';
-$('#meta').textContent=`报告第 ${Math.min(...C.map(c=>c.page))}–${Math.max(...C.map(c=>c.page))} 页 · ${N} 个片段 · ${KB.model} · ${D} 维`;
+$('#meta').textContent=`报告第 ${Math.min(...C.map(c=>c.page))}–${Math.max(...C.map(c=>c.page))} 页 · ${N} 个检索单元（段落或表格的一行） · ${KB.model} · ${D} 维`;
+const CTX=KB.contexts||[], KIND={para:'段落',row:'表格行',code:'代码'};
 $('#nn').textContent=N;
 
 /* ---------- vectors ---------- */
@@ -178,11 +183,15 @@ function docs(dim){ if(dv[dim]) return dv[dim];
 function trunc(q,dim){const o=new Float32Array(dim);let s=0;for(let j=0;j<dim;j++){o[j]=q[j];s+=q[j]*q[j]}
   s=Math.sqrt(s)||1;for(let j=0;j<dim;j++)o[j]/=s;return o}
 function search(q,dim){
-  const m=docs(dim), t=trunc(q,dim), sc=new Float32Array(N);
+  const m=docs(dim), t=trunc(q,dim), sc=new Float32Array(N), dup={};
   for(let i=0;i<N;i++){let s=0;for(let j=0;j<dim;j++)s+=t[j]*m[i*dim+j];sc[i]=s}
-  const order=[...sc.keys()].sort((a,b)=>sc[b]-sc[a]);
+  const all=[...sc.keys()].sort((a,b)=>sc[b]-sc[a]);
+  // one hit per table / paragraph: rows of the same table repeat each other, so keep the best one
+  const seen=new Map(), order=[];
+  for(const i of all){const k=C[i].ctx;if(k===undefined||!seen.has(k)){seen.set(k,i);order.push(i)}else{const h=seen.get(k);(dup[h]=dup[h]||[]).push(i)}}
+  for(const i of all) if(!order.includes(i)) order.push(i);
   let lo=Infinity,hi=-Infinity;sc.forEach(s=>{lo=Math.min(lo,s);hi=Math.max(hi,s)});
-  return {t,sc,order,lo,hi,dim}}
+  return {t,sc,order,lo,hi,dim,dup}}
 function project(q){const o=[];for(let a=0;a<2;a++){let s=0;for(let j=0;j<D;j++)s+=(q[j]-MEAN[j])*AX[a][j];o.push(s/SC[a])}return o}
 
 /* ---------- model (optional) ---------- */
@@ -236,8 +245,9 @@ function drawMap(t){
   for(let k=1;k<6;k++){g.beginPath();g.moveTo(W*k/6,0);g.lineTo(W*k/6,H);g.moveTo(0,H*k/6);g.lineTo(W,H*k/6);g.stroke()}
   const nScan=S?Math.floor(ease(prog(t,TL.scan))*N):0, tp=S?ease(prog(t,TL.top)):0;
   const topSet=S?new Set(S.order.slice(0,S.k)):new Set();
-  for(let i=0;i<N;i++){const [x,y]=pos(i,W,H);let r=3.2,a=.5,c=col.dot;
-    if(S&&i<nScan||S&&t>=TL.top[0]){const u=(S.sc[i]-S.lo)/((S.hi-S.lo)||1);r=2.6+7*Math.pow(u,1.5);a=.2+.8*u;c=col.accent}
+  const r0=N>250?2.2:3.2;
+  for(let i=0;i<N;i++){const [x,y]=pos(i,W,H);let r=r0,a=.5,c=col.dot;
+    if(S&&i<nScan||S&&t>=TL.top[0]){const u=(S.sc[i]-S.lo)/((S.hi-S.lo)||1);r=r0*.8+6*Math.pow(u,2);a=.15+.85*u;c=col.accent}
     if(S&&tp>0&&!topSet.has(i)) a*=1-.8*tp;
     g.fillStyle=rgba(c,a);g.beginPath();g.arc(x,y,r,0,7);g.fill();
     if(i===sel||i===hover){g.strokeStyle=col.ink;g.lineWidth=1.5;g.beginPath();g.arc(x,y,r+4,0,7);g.stroke()}}
@@ -310,9 +320,15 @@ function showResults(){shown=1;const box=$('#res');box.innerHTML='';
   S.order.slice(0,S.k).forEach((i,r)=>{const c=C[i],el=document.createElement('div');el.className='res'+(i===sel?' sel':'');el.dataset.i=i;
     el.style.animationDelay=(r*90)+'ms';
     el.innerHTML=`<div class="top"><span class="rank">${r+1}</span><div class="meter"><i style="width:${Math.max(0,S.sc[i])*100}%"></i></div><span class="score">${S.sc[i].toFixed(3)}</span></div>
-    <h3></h3><div class="meta"></div><p></p>`;
-    el.querySelector('h3').textContent=c.title;el.querySelector('.meta').textContent=`第 ${c.page} 页${c.section?' · '+c.section:''}`;
-    el.querySelector('p').textContent=c.text;el.onclick=()=>select(i);box.appendChild(el)})}
+    <h3></h3><div class="meta"></div><p></p><div class="ctx"></div>`;
+    el.querySelector('h3').textContent=c.title;
+    const mt=el.querySelector('.meta');mt.innerHTML=`<span class="kind"></span>`;mt.firstChild.textContent=KIND[c.kind]||'片段';
+    mt.append(`第 ${c.page} 页${c.heading?' · '+c.heading:c.section?' · '+c.section:''}`);
+    el.querySelector('p').textContent=c.text;
+    const cx=el.querySelector('.ctx'),full=CTX[c.ctx];
+    const more=(S.dup[i]||[]).length;
+    if(more)mt.append(` · 同${c.kind==='row'?'表':'段'}另有 ${more} 条命中`);
+    if(full&&full.replace(/\s/g,'')!==c.text.replace(/\s/g,'')){cx.textContent=(c.kind==='row'?'所在表格\n':'所在段落\n')+full}else cx.remove();el.onclick=()=>select(i);box.appendChild(el)})}
 function select(i){sel=sel===i?-1:i;document.querySelectorAll('.res').forEach(e=>e.classList.toggle('sel',+e.dataset.i===sel));draw()}
 
 /* ---------- run ---------- */
@@ -355,7 +371,7 @@ $('#load').onclick=async()=>{const b=$('#load');b.disabled=true;b.textContent='�
     n.textContent='模型没能加载：当前环境限制了模型下载或不支持。可以继续用演示模式；要自由输入，请按 README 在本地打开这个页面。'}};
 cv.addEventListener('mousemove',ev=>{if(!S||clock<TL.top[0])return;const r=cv.getBoundingClientRect(),x=ev.clientX-r.left,y=ev.clientY-r.top;
   let b=-1,bd=14;for(let i=0;i<N;i++){const [px,py]=pos(i,r.width,r.height),d=Math.hypot(px-x,py-y);if(d<bd){bd=d;b=i}}
-  if(b!==hover){hover=b;const t=$('#tip');if(b<0)t.hidden=true;else{t.hidden=false;t.textContent=`${C[b].title.slice(0,30)} · p.${C[b].page} · ${S.sc[b].toFixed(3)}`;
+  if(b!==hover){hover=b;const t=$('#tip');if(b<0)t.hidden=true;else{t.hidden=false;t.textContent=`${(C[b].heading||C[b].title).slice(0,30)} · p.${C[b].page} · ${S.sc[b].toFixed(3)}`;
     t.style.left=Math.min(r.width-250,x+12)+'px';t.style.top=(y+12)+'px'}cv.style.cursor=b<0?'default':'pointer';if(!playing)draw()}});
 cv.addEventListener('mouseleave',()=>{hover=-1;$('#tip').hidden=true;if(!playing&&S)draw()});
 cv.addEventListener('click',()=>{if(hover>=0&&S&&S.order.slice(0,S.k).includes(hover)){select(hover);document.querySelector(`.res[data-i="${hover}"]`)?.scrollIntoView({block:'nearest',behavior:'smooth'})}else if(hover>=0){select(hover)}});
