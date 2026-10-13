@@ -50,6 +50,29 @@ EmbeddingGemma 2 on CPU, text only, max length 256:
 Truncating to 256 dims costs little; 128 dims starts to hurt retrieval. The page's dimension selector re-ranks with the
 truncated, re-normalised vectors.
 
+## Retrieval quality on the reference document
+
+`eval_retrieval.py kb.json queries.json negatives.json [--q4 vecs.json]` scores a built index. The label set used here (53 questions
+with gold pages, 8 off-topic questions, written by Claude with the document in view, not committed because it quotes the document)
+gave, at page-level relevance on 108 chunks of about 480 characters:
+
+| method | hit@1 | hit@3 | hit@5 | MRR |
+|---|---:|---:|---:|---:|
+| dense 768d | 0.792 | 0.925 | 0.943 | 0.861 |
+| dense 768d, browser q4 model | 0.792 | 0.906 | 0.943 | 0.859 |
+| dense 256d | 0.755 | 0.887 | 0.925 | 0.834 |
+| dense 128d | 0.660 | 0.755 | 0.849 | 0.738 |
+| BM25 on character bigrams | 0.792 | 0.849 | 0.849 | 0.827 |
+| RRF of dense and BM25 | 0.755 | 0.830 | 0.868 | 0.814 |
+
+Chunk size matters more than anything else tried: at `--max-chars 240` dense 768d gives hit@1 0.830 / hit@5 0.943 / hit@10 1.000,
+at `--max-chars 160` hit@1 0.887 / hit@3 0.962 / hit@5 0.981 / MRR 0.929. The failures at 480 characters were one table
+whose four rows shared a chunk, so the vector described none of them. Smaller chunks need a separate, larger text to show the reader.
+
+Refusal is the weak part. Off-topic questions (weather, recipes) score 0.58–0.66 against real questions at 0.66–0.86, so a threshold
+separates them (AUC 0.998). Questions in the same domain that the document does not answer score 0.68–0.75, inside the range of real questions
+(median 0.77), so no cosine threshold separates those. Do not use the score alone to decide that a question has no answer.
+
 ## Caveats
 
 - The 2D map is a PCA projection. The query star is placed by the same projection, so it need not sit next to its hits;
